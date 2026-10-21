@@ -1,0 +1,24 @@
+{
+  "name": "snipci",
+  "version": "0.1.0",
+  "description": "CI that runs every code snippet in your README, docs, and docstrings.",
+  "type": "module",
+  "bin": {
+    "snipci": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ci",
+    "docs",
+    "code-snippets",
+    "verification",
+    "documentation-testing",
+    "github-actions"
+  ]
+}

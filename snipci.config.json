@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "default": "run",
+  "paths": ["README.md"],
+  "ignore": ["test/fixtures/**", "node_modules/**"],
+  "timeout": 30,
+  "baseline": { "file": ".snipci-baseline.json" }
+}
