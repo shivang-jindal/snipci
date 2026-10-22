@@ -65,6 +65,7 @@ export async function runCommand(optsIn, io) {
     now: io.now,
     tmpdir: io.tmpdir,
     fs: io.fs,
+    jobs: opts.jobs,
     defaultTimeout: config.timeout,
   });
   const durationMs = io.now() - t0;
@@ -196,7 +197,8 @@ Options:
   --no-baseline           ignore the baseline file
   --update-baseline       rewrite the baseline from current results
   --config <path>         config file (default: snipci.config.json)
-  --jobs <n>              accepted; v0 runs sequentially (pool deferred)
+  --jobs <n>              run snippets with N parallel workers (default: 1,
+                          report order unchanged)
   --quiet, -q             summary only (when passing)
   --verbose               full report even when passing
   --no-color              never colorize (v0 output is plain anyway)

@@ -154,7 +154,7 @@ Zero runtime dependencies — Node ≥ 20 only. No `npm install`, no lockfile.
 node src/cli.js --help          # usage, directives, exit codes
 node src/cli.js run README.md   # self-hosting gate (also asserted by the test suite)
 node src/cli.js check           # CI gate: exit 1 on failures not in the baseline
-node --test test/               # parser, fixture, env-isolation, exit-code, self-tests
+node --test test/               # 78 tests (parser, fixture, env-isolation, exit-code, self-tests)
 ```
 
 (`run-tests.js` + `test/package.json` are a portability shim: on Node ≥ 21 the
@@ -171,7 +171,7 @@ console.log("snipci: docs do not lie");
 
 ## v0 status
 
-**Works**
+**Shipped, covered by 78 passing tests:**
 
 - Markdown fence extraction: ` ``` `/`~~~` fences ≥ 3 long, info strings,
   nested blocks (4-backtick demos keep their inner fences), CRLF/CR input,
@@ -200,6 +200,9 @@ console.log("snipci: docs do not lie");
   `--format json`, exit codes 0/1/2/3 per SPEC
 - Self-hosting gate: this README's fences are annotated (skips carry reasons)
   and `snipci run README.md` is asserted green by the test suite
+- `--jobs N` on run/check: a worker pool executes snippets with N-way
+  concurrency while human and JSON reports stay identical in content and
+  ordering to the sequential run (durations aside); default `--jobs 1`
 
 **Deferred** (v1+, per SPEC)
 
@@ -208,5 +211,4 @@ console.log("snipci: docs do not lie");
 - GitHub Action + PR comment + badge, junit/markdown/shields reporters
 - `.mdx`/`.rst`/`.ipynb`/docstring extraction; group sessions, setup blocks;
   `env=`, `image=`, `fixture=`, `seed=` directives; RE2-semantics regex safety
-- `--jobs` parallelism (flag accepted; v0 runs sequentially),
-  `snipci explain|replay|suggest`
+- `snipci explain|replay|suggest`

@@ -103,28 +103,44 @@ export async function runSnippet(snippet, ctx) {
 }
 
 /**
- * Run all planned snippets sequentially (v0: no --jobs parallelism yet).
- * Unexpected per-snippet exceptions become error results and are collected
- * in `internal` so the CLI can print partial results and exit 3.
+ * Run all planned snippets. `ctx.jobs` (default 1) controls the size of the
+ * worker pool; results always come back in snippet order so reports are
+ * identical to a sequential run (durations aside). Unexpected per-snippet
+ * exceptions become error results and are collected in `internal` so the CLI
+ * can print partial results and exit 3.
  */
 export async function runAll(snippets, ctx) {
-  const results = [];
-  const internal = [];
+  const jobs = Math.max(1, Math.floor(ctx.jobs || 1));
+  const results = new Array(snippets.length);
+  const internalByIndex = [];
+  let next = 0;
 
-  for (const snippet of snippets) {
-    let result;
-    try {
-      result = await runSnippet(snippet, ctx);
-    } catch (err) {
-      // Defensive: runSnippet reports its own errors, but never lose a snippet.
-      result = baseResult(snippet);
-      result.status = 'error';
-      result.failure = { phase: 'sandbox', message: err?.message ?? String(err) };
-      result.internal = `${snippet.path}:${snippet.line}: ${err?.message ?? String(err)}`;
+  async function worker() {
+    for (;;) {
+      const i = next++;
+      if (i >= snippets.length) return;
+      const snippet = snippets[i];
+      let result;
+      try {
+        result = await runSnippet(snippet, ctx);
+      } catch (err) {
+        // Defensive: runSnippet reports its own errors, but never lose a snippet.
+        result = baseResult(snippet);
+        result.status = 'error';
+        result.failure = { phase: 'sandbox', message: err?.message ?? String(err) };
+        result.internal = `${snippet.path}:${snippet.line}: ${err?.message ?? String(err)}`;
+      }
+      if (result.internal) internalByIndex.push([i, result.internal]);
+      results[i] = result;
     }
-    if (result.internal) internal.push(result.internal);
-    results.push(result);
   }
 
-  return { results, internal };
+  const pool = [];
+  for (let w = 0; w < Math.min(jobs, Math.max(1, snippets.length)); w++) pool.push(worker());
+  await Promise.all(pool);
+
+  // Parallel workers finish out of order; report internals in snippet order so
+  // even stderr stays byte-identical to a sequential run.
+  internalByIndex.sort((a, b) => a[0] - b[0]);
+  return { results, internal: internalByIndex.map(([, msg]) => msg) };
 }

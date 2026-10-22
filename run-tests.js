@@ -19,4 +19,5 @@ import './test/fixtures.test.js';
 import './test/cli.test.js';
 import './test/baseline.test.js';
 import './test/planner.test.js';
+import './test/jobs.test.js';
 import './test/selfhost.test.js';
