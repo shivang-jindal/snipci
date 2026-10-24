@@ -117,23 +117,42 @@ export function expandFiles({ root, patterns, ignore = [], applyIgnore = true, f
   }
 
   if (needsWalk) {
-    const dirPatterns = patterns.map((p) => (hasMagic(p) ? p : null)).filter(Boolean);
-    const dirOnly = patterns
-      .map((p) => (hasMagic(p) ? null : p))
-      .filter((p) => p !== null)
-      .map((p) => {
-        try {
-          return fs.statSync(path.resolve(root, p)).isDirectory() ? `${toPosix(p)}/**/*.md` : null;
-        } catch {
-          return null;
-        }
-      })
-      .filter(Boolean);
-    const effective = [...dirPatterns, ...dirOnly];
-    for (const { abs, rel } of walk(root, ignoreList, fs)) {
-      if (!filter(abs)) continue;
-      if (ignoreList.some((ig) => matchGlob(ig, rel))) continue;
-      if (effective.some((p) => matchGlob(p, rel))) results.add(abs);
+    const magicPatterns = patterns.filter((p) => hasMagic(p));
+    const dirOnly = [];
+    const outOfRootDirs = [];
+    for (const p of patterns) {
+      if (hasMagic(p)) continue;
+      const abs = path.resolve(root, p);
+      let isDir = false;
+      try {
+        isDir = fs.statSync(abs).isDirectory();
+      } catch {
+        isDir = false;
+      }
+      if (!isDir) continue;
+      // Build the pattern from the ROOT-RELATIVE posix path: raw `p` may be
+      // `.\docs`, `docs/`, or absolute — none of which ever match the
+      // walk()'s rel paths, silently producing zero files.
+      const relDir = toPosix(path.relative(root, abs));
+      const outside = relDir === '..' || relDir.startsWith('../') || path.isAbsolute(relDir);
+      if (outside) outOfRootDirs.push(abs);
+      else dirOnly.push(relDir ? `${relDir}/**/*.md` : '**/*.md');
+    }
+    const effective = [...magicPatterns, ...dirOnly];
+    if (effective.length) {
+      for (const { abs, rel } of walk(root, ignoreList, fs)) {
+        if (!filter(abs)) continue;
+        if (ignoreList.some((ig) => matchGlob(ig, rel))) continue;
+        if (effective.some((p) => matchGlob(p, rel))) results.add(abs);
+      }
+    }
+    // Explicit OUT-OF-ROOT directories: the root walk can't see them, so
+    // walk each dir directly (root-relative ignore globs don't apply
+    // outside the root — same rule as explicitly named files).
+    for (const dir of outOfRootDirs) {
+      for (const { abs } of walk(dir, [], fs)) {
+        if (filter(abs)) results.add(abs);
+      }
     }
   }
 

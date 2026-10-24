@@ -67,7 +67,15 @@ export async function plan({ root, config, cliPaths, changedOnly, baselineIds, e
   const snippets = [];
   for (const abs of files) {
     const rel = toPosix(path.relative(root, abs)) || toPosix(path.basename(abs));
-    const text = fs.readFileSync(abs, 'utf8');
+    // A doc deleted/unreadable between globbing and here (TOCTOU, perms)
+    // must not sink the whole run — skip it with a note instead.
+    let text;
+    try {
+      text = fs.readFileSync(abs, 'utf8');
+    } catch (err) {
+      notes.push(`skipped ${rel}: ${err.message}`);
+      continue;
+    }
     const { fences } = parseMarkdown(text, rel);
     for (const fence of fences) {
       const snippet = buildSnippet(fence, { file: rel, repoPath: rel });
